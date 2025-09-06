@@ -1,11 +1,47 @@
-const mongoose = require("mongoose");
+import mongoose from "mongoose";
 
-const UserSchema = new mongoose.Schema({
-  type: { String, enum: ["admin", "customer"], default: "customer" },
-  name: { type: String, required: true },
-  email: { type: String, required: true, unique: true },
-  password: { type: String, required: true },
-  createdAt: { type: Date, default: Date.now },
-});
+const AddressSchema = new mongoose.Schema(
+  {
+    label: { type: String, default: "Home" },
+    line1: { type: String, required: true },
+    line2: { type: String },
+    city: { type: String, required: true },
+    state: { type: String, required: true },
+    zip: { type: String, required: true },
+    country: { type: String, default: "IN" },
+    phone: { type: String },
+  },
+  { _id: false }
+);
 
-module.exports = mongoose.model("User", UserSchema);
+const UserSchema = new mongoose.Schema(
+  {
+    name: { type: String, required: true, trim: true },
+    email: {
+      type: String,
+      required: true,
+      unique: true,
+      lowercase: true,
+      trim: true,
+      index: true,
+    },
+
+    passwordHash: { type: String, required: true },
+    role: {
+      type: String,
+      enum: ["user", "admin"],
+      default: "user",
+      index: true,
+    },
+    avatarUrl: { type: String },
+
+    addresses: [AddressSchema],
+    defaultAddressIndex: { type: Number, default: 0 },
+    lastLoginAt: { type: Date },
+  },
+  { timestamps: true }
+);
+
+UserSchema.index({ email: 1 }, { unique: true });
+
+export default mongoose.model("User", UserSchema);
