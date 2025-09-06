@@ -34,7 +34,6 @@ const UserSchema = new mongoose.Schema(
       default: "user",
       index: true,
     },
-    avatarUrl: { type: String },
 
     addresses: [AddressSchema],
     defaultAddressIndex: { type: Number, default: 0 },
