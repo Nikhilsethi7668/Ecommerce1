@@ -21,7 +21,7 @@ const CategorySchema = new mongoose.Schema(
     },
     description: { type: String },
     imageUrl: { type: String },
-    isActive: { type: Boolean, default: true, index: true },
+    isActive: { type: Boolean, default: true},
     subcategories: [SubcategorySchema],
   },
   { timestamps: true }
