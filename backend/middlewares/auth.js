@@ -1,3 +1,4 @@
+// middlewares/auth.js
 import jwt from "jsonwebtoken";
 
 export const COOKIE_NAME = "token";

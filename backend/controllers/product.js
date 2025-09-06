@@ -1,6 +1,6 @@
 import mongoose from "mongoose";
-import Product from "../models/Product.js";
-import Category from "../models/Category.js";
+import Product from "../models/product.js";
+import Category from "../models/category.js";
 
 const num = (v, d) => {
   const n = parseInt(v, 10);
