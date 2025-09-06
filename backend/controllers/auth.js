@@ -1,34 +1,43 @@
 import bcrypt from "bcryptjs";
-import User from "../models/user.js";
+import User from "../models/User.js";
+import { issueAuthCookie } from "../middlewares/auth.js";
 
 const isStrongPassword = (pw) =>
   /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*]).{6,}$/.test(pw);
 
-// SIGNUP
-export async function signup(req, res, next) {
+const sanitize = (u) => ({
+  id: String(u._id),
+  name: u.name,
+  email: u.email,
+  phone: u.phone,
+  role: u.role,
+});
+
+export async function signup(req, res) {
   try {
     const { name, email, password, phone } = req.body;
-    if (!name || !email || !password || !phone) {
+    if (!name || !email || !password || !phone)
       return res.status(400).json({ message: "All fields are required" });
-    }
-
     const emailNorm = String(email).toLowerCase().trim();
-    if (!/^\S+@\S+\.\S+$/.test(emailNorm)) {
+    if (!/^\S+@\S+\.\S+$/.test(emailNorm))
       return res.status(400).json({ message: "Invalid email address" });
-    }
-    if (!/^\d{10}$/.test(String(phone))) {
+    if (!/^\d{10}$/.test(String(phone)))
       return res.status(400).json({ message: "Invalid phone number" });
-    }
-    if (!isStrongPassword(password)) {
-      return res.status(400).json({
-        message:
-          "Password must be ≥6 chars and include uppercase, lowercase, number, and special character (!@#$%^&*).",
-      });
-    }
+    if (!isStrongPassword(password))
+      return res
+        .status(400)
+        .json({
+          message:
+            "Password must be ≥6 chars and include uppercase, lowercase, number, and special character (!@#$%^&*).",
+        });
 
-    const exists = await User.findOne({ email: emailNorm }).lean();
-    if (exists)
-      return res.status(409).json({ message: "Email already in use" });
+    const dup = await User.findOne({
+      $or: [{ email: emailNorm }, { phone }],
+    }).lean();
+    if (dup) {
+      const which = dup.email === emailNorm ? "Email" : "Phone";
+      return res.status(409).json({ message: `${which} already in use` });
+    }
 
     const passwordHash = await bcrypt.hash(password, 10);
     const user = await User.create({
@@ -38,46 +47,30 @@ export async function signup(req, res, next) {
       passwordHash,
       role: "user",
     });
-
-    // prepare payload for middleware
-    req.authUserId = user._id;
-    res.locals.user = {
-      id: user._id,
-      name: user.name,
-      email: user.email,
-      phone: user.phone,
-      role: user.role,
-    };
-    res.locals.message = "Signed up successfully";
-    res.locals.statusCode = 201;
-    return next(); // -> issueAuthCookie
+    issueAuthCookie(res, user._id);
+    return res.status(201).json({ message: "Signed up", user: sanitize(user) });
   } catch (err) {
-    if (
-      err?.code === 11000 &&
-      (err?.keyPattern?.email || err?.keyValue?.email)
-    ) {
-      return res.status(409).json({ message: "Email already in use" });
+    if (err?.code === 11000) {
+      const field = err?.keyPattern?.email
+        ? "Email"
+        : err?.keyPattern?.phone
+        ? "Phone"
+        : "Field";
+      return res.status(409).json({ message: `${field} already in use` });
     }
-    console.error("signup error:", err);
     return res.status(500).json({ message: "Server error" });
   }
 }
 
-// LOGIN
-export async function login(req, res, next) {
+export async function login(req, res) {
   try {
     const { email, password } = req.body;
-    if (!email || !password) {
+    if (!email || !password)
       return res
         .status(400)
         .json({ message: "Email and password are required" });
-    }
-
     const emailNorm = String(email).toLowerCase().trim();
-    // passwordHash is select:false in model → include it
-    const user = await User.findOne({ email: emailNorm })
-      .select("+passwordHash")
-      .lean();
+    const user = await User.findOne({ email: emailNorm });
     if (!user)
       return res.status(401).json({ message: "Invalid email or password" });
 
@@ -85,100 +78,46 @@ export async function login(req, res, next) {
     if (!ok)
       return res.status(401).json({ message: "Invalid email or password" });
 
-    // last login (fire-and-forget, no need to await)
-    User.updateOne(
+    await User.updateOne(
       { _id: user._id },
       { $set: { lastLoginAt: new Date() } }
-    ).catch(() => {});
-
-    req.authUserId = user._id;
-    res.locals.user = {
-      id: user._id,
-      name: user.name,
-      email: user.email,
-      phone: user.phone,
-      role: user.role,
-    };
-    res.locals.message = "Logged in successfully";
-    return next(); // -> issueAuthCookie
-  } catch (err) {
-    console.error("login error:", err);
+    );
+    issueAuthCookie(res, user._id);
+    return res.json({ message: "Logged in", user: sanitize(user) });
+  } catch {
     return res.status(500).json({ message: "Server error" });
   }
-}
-
-// (example) Get current user from cookie-auth
-export async function me(req, res) {
-  // requireAuth middleware sets req.user.id
-  const user = await User.findById(req.user.id).lean();
-  if (!user) return res.json(null);
-  return res.json({
-    id: user._id,
-    name: user.name,
-    email: user.email,
-    phone: user.phone,
-    role: user.role,
-  });
 }
 
 export async function addAddress(req, res) {
   try {
     const userId = req.user.id;
     const { label, line1, line2, city, state, zip, country, phone } = req.body;
-
-    if (!line1 || !city || !state || !zip) {
+    if (!line1 || !city || !state || !zip)
       return res.status(400).json({ message: "Address fields are required" });
-    }
 
     const address = {
-      label: label ? label.trim() : "Home",
-      line1: line1.trim(),
-      line2: line2 ? line2.trim() : "",
-      city: city.trim(),
-      state: state.trim(),
-      zip: zip.trim(),
-      country: country ? country.trim() : "IN",
-      phone: phone ? phone.trim() : "",
+      label: label ? String(label).trim() : "Home",
+      line1: String(line1).trim(),
+      line2: line2 ? String(line2).trim() : "",
+      city: String(city).trim(),
+      state: String(state).trim(),
+      zip: String(zip).trim(),
+      country: country ? String(country).trim() : "IN",
+      phone: phone ? String(phone).trim() : "",
     };
 
     const user = await User.findById(userId);
-    if (!user) {
-      return res.status(404).json({ message: "User not found" });
-    }
+    if (!user) return res.status(404).json({ message: "User not found" });
 
+    if (!Array.isArray(user.addresses)) user.addresses = [];
     user.addresses.push(address);
     await user.save();
 
     return res
       .status(201)
-      .json({ addresses: user.addresses }, { message: "Address added" });
-  } catch (err) {
-    console.error("addAddress error:", err);
-    return res.status(500).json({ message: "Server error" });
-  }
-}
-export async function addAvatar(req, res) {
-  try {
-    const userId = req.user.id;
-    if (!req.file) {
-      return res.status(400).json({ message: "No file uploaded" });
-    }
-    const avatarUrl = `/uploads/avatars/${req.file.filename}`;
-
-    const user = await User.findByIdAndUpdate(
-      userId,
-      { avatarUrl },
-      { new: true }
-    ).lean();
-    if (!user) {
-      return res.status(404).json({ message: "User not found" });
-    }
-
-    return res
-      .status(200)
-      .json({ avatarUrl: user.avatarUrl }, { message: "Avatar updated" });
-  } catch (err) {
-    console.error("addAvatar error:", err);
+      .json({ message: "Address added", addresses: user.addresses });
+  } catch {
     return res.status(500).json({ message: "Server error" });
   }
 }
