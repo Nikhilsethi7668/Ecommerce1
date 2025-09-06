@@ -27,6 +27,7 @@ const UserSchema = new mongoose.Schema(
     },
 
     passwordHash: { type: String, required: true },
+    phone: { type: String, index: true },
     role: {
       type: String,
       enum: ["user", "admin"],
