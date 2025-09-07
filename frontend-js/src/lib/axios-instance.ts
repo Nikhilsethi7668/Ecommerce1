@@ -1,7 +1,7 @@
 import axios from "axios";
 
 const axiosInstance = axios.create({
-    baseURL: "https://ecommerce1-3fr4.vercel.app",
+    baseURL: "https://ecommerce1-wytm.onrender.com",
     withCredentials: true,  
 });
 
