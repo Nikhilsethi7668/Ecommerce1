@@ -5,7 +5,7 @@ import { requireAuth, logout } from "../middlewares/auth.js";
 const router = express.Router();
 
 router.post("/signup", signup);
-router.get("/me", getProfile);
+router.get("/me", requireAuth, getProfile);
 router.post("/login", login);
 router.post("/add-address", requireAuth, addAddress);
 router.post("/logout", requireAuth, logout);

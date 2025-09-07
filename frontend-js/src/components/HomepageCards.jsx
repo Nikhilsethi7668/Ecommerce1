@@ -34,7 +34,7 @@ export default function CategorySections() {
   }
 
   return (
-    <div className="max-w-7xl mx-auto p-4 space-y-12">
+    <div className="max-w-7xl mx-auto bg-white p-4 space-y-12">
       {categories.map((category) => (
         <section key={category._id} className="space-y-4">
           {/* Section header */}
@@ -51,63 +51,61 @@ export default function CategorySections() {
           {/* Horizontal scroll carousel */}
           <div className="flex gap-4 overflow-x-auto pb-2 scrollbar-thin">
             {category.products.map((product) => (
-  <Card
-    key={product._id}
-    className="w-56 flex-shrink-0 cursor-pointer py-0 hover:shadow-md transition"
-    onClick={() => goToProduct(product._id)}
-  >
-    <CardHeader className="p-0">
-      <img
-        src={product.thumb}
-        alt={product.title}
-        className="h-40 w-full object-cover rounded-t-md"
-      />
-    </CardHeader>
+              <Card
+                key={product._id}
+                className="w-56 flex-shrink-0 cursor-pointer py-0 hover:shadow-md transition"
+                onClick={() => goToProduct(product._id)}
+              >
+                <CardHeader className="p-0">
+                  <img
+                    src={product.thumb}
+                    alt={product.title}
+                    className="h-40 w-full object-cover rounded-t-md"
+                  />
+                </CardHeader>
 
-    <CardContent className="p-3 space-y-1">
-      {/* Title + brand */}
-      <h3 className="font-medium truncate">{product.title}</h3>
-      <p className="text-xs text-muted-foreground truncate">{product.brand}</p>
+                <CardContent className="p-3 space-y-1">
+                  {/* Title + brand */}
+                  <h3 className="font-medium truncate">{product.title}</h3>
+                  <p className="text-xs text-muted-foreground truncate">{product.brand}</p>
 
-      {/* Optional rating / reviews */}
-      {product.rating !== undefined && (
-        <div className="flex items-center text-yellow-500 text-xs gap-1">
-          <span>⭐ {product.rating}</span>
-          {product.reviews && <span className="text-muted-foreground">({product.reviews} reviews)</span>}
-        </div>
-      )}
+                  {/* Optional rating / reviews */}
+                  {product.rating !== undefined && (
+                    <div className="flex items-center text-yellow-500 text-xs gap-1">
+                      <span>⭐ {product.rating}</span>
+                      {product.reviews && <span className="text-muted-foreground">({product.reviews} reviews)</span>}
+                    </div>
+                  )}
 
-      {/* Short description if you have it */}
-      {product.shortDesc && (
-        <p className="text-xs text-muted-foreground line-clamp-2">{product.shortDesc}</p>
-      )}
+                  {/* Short description if you have it */}
+                  {product.shortDesc && (
+                    <p className="text-xs text-muted-foreground line-clamp-2">{product.shortDesc}</p>
+                  )}
 
-      <Separator className="my-2" />
+                  <Separator className="my-2" />
 
-      {/* Price + stock */}
-      <div className="flex items-center justify-between">
-        <p className="font-bold text-primary">₹{product.price.toLocaleString()}</p>
-        {product.inStock !== undefined && (
-          <span
-            className={`text-xs font-medium ${
-              product.inStock ? "text-green-600" : "text-red-500"
-            }`}
-          >
-            {product.inStock ? "In Stock" : "Out of Stock"}
-          </span>
-        )}
-      </div>
+                  {/* Price + stock */}
+                  <div className="flex items-center justify-between">
+                    <p className="font-bold text-primary">₹{product.price.toLocaleString()}</p>
+                    {product.inStock !== undefined && (
+                      <span
+                        className={`text-xs font-medium ${product.inStock ? "text-green-600" : "text-red-500"
+                          }`}
+                      >
+                        {product.inStock ? "In Stock" : "Out of Stock"}
+                      </span>
+                    )}
+                  </div>
 
-      {/* Maybe show discount */}
-      {product.discount && (
-        <p className="text-xs text-muted-foreground">
-          <span className="line-through">₹{product.originalPrice?.toLocaleString()}</span>{" "}
-          <span className="text-red-500 font-medium">{product.discount}% off</span>
-        </p>
-      )}
-    </CardContent>
-  </Card>
-))}
+                  {product.discount && (
+                    <p className="text-xs text-muted-foreground">
+                      <span className="line-through">₹{product.originalPrice?.toLocaleString()}</span>{" "}
+                      <span className="text-red-500 font-medium">{product.discount}% off</span>
+                    </p>
+                  )}
+                </CardContent>
+              </Card>
+            ))}
 
           </div>
         </section>

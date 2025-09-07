@@ -1,7 +1,7 @@
 "use client"
 
-import { createContext, useContext, useEffect, useState } from "react"
-import { useAuth } from "./auth-context"
+import { createContext, useContext, useEffect, useState, useMemo } from "react"
+import { useAuth } from "@/context/auth-context"
 import axiosInstance from "@/lib/axios-instance"
 
 const CartContext = createContext(undefined)
@@ -12,126 +12,98 @@ export function CartProvider({ children }) {
   const { user } = useAuth()
 
   useEffect(() => {
-    if (user) {
-      fetchCart()
-    } else {
-      setCart(null)
-    }
+    if (user) fetchCart()
+    else setCart(null)
   }, [user])
 
   const fetchCart = async () => {
     if (!user) return
-
     try {
       setLoading(true)
-      const response = await axiosInstance.get("/api/cart")
-
-      if (response.status === 200) {
-        const data = await response.data
-        setCart(data.cart)
-        console.log(data);
-        
-      }
-    } catch (error) {
-      console.error("Failed to fetch cart:", error)
+      const { data } = await axiosInstance.get("/api/cart")
+      if (data?.cart) setCart(data.cart)
+    } catch (e) {
+      console.error("Failed to fetch cart:", e)
     } finally {
       setLoading(false)
     }
   }
 
-  const addToCart = async (productId, qty) => {
-    console.log("Add to cart called");
-    
-    if (!user) {
-      return { success: false, error: "Please login to add items to cart" }
-    }
-     
+  const addToCart = async (productId, qty = 1, variantSku = null, meta = undefined) => {
+    if (!user) return { success: false, error: "Please login to add items to cart" }
     try {
-      const response = await axiosInstance.post("/api/cart/add", {
-        productId,
-        qty,
-        variantSku: null,
-      })
-
-      const data = await response.data
-
-      if (data.success) {
+      const { data } = await axiosInstance.post("/api/cart/add", { productId, qty, variantSku, meta })
+      if (data?.cart) {
         setCart(data.cart)
         return { success: true }
-      } else {
-        return { success: false, error: data.error }
       }
-    } catch (error) {
-      return { success: false, error: "Network error occurred" }
+      return { success: false, error: data?.message || "Add to cart failed" }
+    } catch (e) {
+      return { success: false, error: e?.response?.data?.message || "Network error occurred" }
     }
   }
 
-  const updateQuantity = async (productId, qty) => {
+  const removeFromCart = async (productId, variantSku = null) => {
     if (!user) return { success: false, error: "Authentication required" }
-
     try {
-      const response = await fetch("/api/cart", {
-        body: JSON.stringify({ productId, qty }),
-      })
-
-      const data = await response.json()
-
-      if (data.success) {
+      const { data } = await axiosInstance.post("/api/cart/remove", { productId, variantSku })
+      if (data?.cart) {
         setCart(data.cart)
         return { success: true }
-      } else {
-        return { success: false, error: data.error }
       }
-    } catch (error) {
-      return { success: false, error: "Network error occurred" }
+      return { success: false, error: data?.message || "Remove failed" }
+    } catch (e) {
+      return { success: false, error: e?.response?.data?.message || "Network error occurred" }
     }
   }
 
-  const removeFromCart = async (productId) => {
+  const updateQuantity = async (productId, nextQty, variantSku = null) => {
     if (!user) return { success: false, error: "Authentication required" }
+    if (nextQty < 0) nextQty = 0
 
-    try {
-      const response = await fetch(`/api/cart/${productId}`, {
-      })
+    const items = cart?.items || []
+    const match = items.find((it) => {
+      const pid = typeof it.product === "object" ? it.product?._id : it.product
+      return String(pid) === String(productId) && String(it.variantSku || "") === String(variantSku || "")
+    })
+    const currentQty = match?.qty ?? 0
 
-      const data = await response.json()
+    if (!match && nextQty === 0) return { success: true }
+    if (!match && nextQty > 0) return addToCart(productId, nextQty, variantSku)
 
-      if (data.success) {
-        await fetchCart() // Refresh cart
-        return { success: true }
-      } else {
-        return { success: false, error: data.error }
-      }
-    } catch (error) {
-      return { success: false, error: "Network error occurred" }
+    if (nextQty === currentQty) return { success: true }
+    if (nextQty === 0) return removeFromCart(productId, variantSku)
+
+    if (nextQty > currentQty) {
+      const delta = nextQty - currentQty
+      return addToCart(productId, delta, variantSku)
     }
+
+    const { success, error } = await removeFromCart(productId, variantSku)
+    if (!success) return { success, error }
+    return addToCart(productId, nextQty, variantSku)
   }
 
-  const clearCart = () => {
-    setCart(null)
-  }
+  const clearCart = () => setCart(null)
 
-  return (
-    <CartContext.Provider
-      value={{
-        cart,
-        addToCart,
-        updateQuantity,
-        removeFromCart,
-        clearCart,
-        fetchCart,
-        loading,
-      }}
-    >
-      {children}
-    </CartContext.Provider>
+  const value = useMemo(
+    () => ({
+      cart,
+      loading,
+      fetchCart,
+      addToCart,
+      updateQuantity,
+      removeFromCart,
+      clearCart,
+    }),
+    [cart, loading]
   )
+
+  return <CartContext.Provider value={value}>{children}</CartContext.Provider>
 }
 
 export function useCart() {
-  const context = useContext(CartContext)
-  if (context === undefined) {
-    throw new Error("useCart must be used within a CartProvider")
-  }
-  return context
+  const ctx = useContext(CartContext)
+  if (ctx === undefined) throw new Error("useCart must be used within a CartProvider")
+  return ctx
 }

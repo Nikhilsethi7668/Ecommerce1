@@ -29,6 +29,7 @@ export function LoginForm() {
       const result = await login(formData.email, formData.password)
 
       if (result.success) {
+        alert("Login successful!")
         toast({
           title: "Welcome back!",
           description: "You have been successfully logged in.",
@@ -38,6 +39,7 @@ export function LoginForm() {
         const next = searchParams.get("next") || "/"
         navigate(next)
       } else {
+        alert("Login failed: " + (result.error || "Invalid credentials"))
         toast({
           title: "Login Failed",
           description: result.error || "Invalid credentials",

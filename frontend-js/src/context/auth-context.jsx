@@ -1,136 +1,111 @@
-"use client"
+"use client";
 
-import axiosInstance from "@/lib/axios-instance"
-import { createContext, useContext, useEffect, useState } from "react"
+import axiosInstance from "@/lib/axios-instance";
+import { createContext, useContext, useEffect, useState, useCallback, useRef } from "react";
 
-const AuthContext = createContext(undefined)
+const AuthContext = createContext(undefined);
 
 export function AuthProvider({ children }) {
-  const [user, setUser] = useState(null)
-  const [token, setToken] = useState(null)
-  const [loading, setLoading] = useState(true)
+  const [user, setUser] = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  const ranOnce = useRef(false);
+  const inFlight = useRef(false);
+
+  const validateSession = useCallback(async () => {
+    if (inFlight.current) return;          // <— avoid overlaps
+    inFlight.current = true;
+    try {
+      // don’t throw on 401; handle it as unauth
+      const res = await axiosInstance.get("/api/auth/me", {
+        validateStatus: () => true,
+      });
+
+      if (res.status === 200 && res.data?.success && res.data?.user) {
+        setUser(res.data.user);
+      } else {
+        setUser(null);
+      }
+    } catch {
+      setUser(null);
+    } finally {
+      setLoading(false);
+      inFlight.current = false;
+    }
+  }, []);
 
   useEffect(() => {
-    // Check for existing token on mount
-    const storedToken = localStorage.getItem("auth_token")
-    if (storedToken) {
-      setToken(storedToken)
-      validateSession(storedToken)
-    } else {
-      setLoading(false)
-    }
-  }, [])
-
-  const validateSession = async (authToken) => {
-    try {
-      const response = await fetch("/api/auth/me", {
-        headers: {
-          Authorization: `Bearer ${authToken}`,
-        },
-      })
-
-      if (response.ok) {
-        const data = await response.json()
-        setUser(data.user)
-      } else {
-        // Token invalid, clear it
-        localStorage.removeItem("auth_token")
-        setToken(null)
-      }
-    } catch (error) {
-      console.error("Session validation failed:", error)
-      localStorage.removeItem("auth_token")
-      setToken(null)
-    } finally {
-      setLoading(false)
-    }
-  }
+    if (ranOnce.current) return;         
+    ranOnce.current = true;
+    validateSession();
+  }, [validateSession]);
 
   const login = async (identifier, password) => {
     try {
       const { data } = await axiosInstance.post("/api/auth/login", {
         email: identifier,
-        password
+        password,
       });
-
-      if (data.success) {
-        setToken(data.token)
-        setUser(data.user)
-        localStorage.setItem("auth_token", data.token)
-        return { success: true }
-      } else {
-        return { success: false, error: data.error }
+      if (data?.success) {
+        setUser(data.user ?? null);
+        return { success: true };
       }
+      return { success: false, error: data?.message || "Login failed" };
     } catch (error) {
-      console.error("Login error:", error);
-      return { success: false, error: error.response?.data?.message || "Network error occurred" }
+      return { success: false, error: error.response?.data?.message || "Network error occurred" };
     }
-  }
+  };
 
   const signup = async (userData) => {
     try {
-      const response = await axiosInstance.post("/api/auth/signup", userData)
-
-      const data = await response.data
-
-      if (data.success) {
-        return { success: true, userId: data.userId }
-      } else {
-        return { success: false, error: data.error }
+      const { data } = await axiosInstance.post("/api/auth/signup", userData);
+      if (data?.user) {
+        setUser(data.user);
+        return { success: true, userId: data.user.id };
       }
+      return { success: false, error: data?.message || "Signup failed" };
     } catch (error) {
-      return { success: false, error: "Network error occurred" }
+      return { success: false, error: error.response?.data?.message || "Network error occurred" };
     }
-  }
+  };
 
-  const verify = async (userId, code) => {
+  const addAddress = async (payload) => {
     try {
-      const response = await axiosInstance.post("/api/auth/verify", {
-      userId, code
-      })
-
-      const data = await response.data
-
-      if (data.success) {
-        setToken(data.token)
-        setUser(data.user)
-        localStorage.setItem("auth_token", data.token)
-        return { success: true }
-      } else {
-        return { success: false, error: data.error }
-      }
+      const { data } = await axiosInstance.post("/api/auth/add-address", payload);
+      if (data?.addresses) return { success: true, addresses: data.addresses };
+      return { success: false, error: data?.message || "Add address failed" };
     } catch (error) {
-      return { success: false, error: "Network error occurred" }
+      return { success: false, error: error.response?.data?.message || "Network error occurred" };
     }
-  }
+  };
 
-  const logout = () => {
-    setUser(null)
-    setToken(null)
-    localStorage.removeItem("auth_token")
-  }
+  const logout = async () => {
+    try {
+      await axiosInstance.post("/api/auth/logout", {});
+    } catch { }
+    setUser(null);
+  };
 
   return (
     <AuthContext.Provider
       value={{
         user,
-        token,
+        isAuthenticated: !!user,
+        loading,
         login,
         signup,
-        verify,
+        addAddress,
         logout,
-        loading,
+        refresh: validateSession, // safe to call; guarded by inFlight
       }}
     >
       {children}
     </AuthContext.Provider>
-  )
+  );
 }
 
 export function useAuth() {
-  const context = useContext(AuthContext)
-  if (context === undefined) {
-    throw new Error("useAuth must be used within an AuthProvider")
-  }
-  return context
+  const context = useContext(AuthContext);
+  if (context === undefined) throw new Error("useAuth must be used within an AuthProvider");
+  return context;
 }

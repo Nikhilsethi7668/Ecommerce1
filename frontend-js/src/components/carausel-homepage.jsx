@@ -9,15 +9,14 @@ import {
 } from "@/components/ui/carousel"
 import { Card, CardContent } from "@/components/ui/card"
 
-// some demo product images – swap with real
 const slides = [
-  "https://picsum.photos/360/400?1",
-  "https://picsum.photos/360/400?2",
-  "https://picsum.photos/360/400?3",
-  "https://picsum.photos/360/400?4",
-  "https://picsum.photos/360/400?5",
-  "https://picsum.photos/360/400?6",
-]
+  "https://images.pexels.com/photos/5872360/pexels-photo-5872360.jpeg?auto=compress&cs=tinysrgb&w=900&h=1000&dpr=1",
+  "https://images.pexels.com/photos/5872350/pexels-photo-5872350.jpeg?auto=compress&cs=tinysrgb&w=900&h=1000&dpr=1",
+  "https://images.pexels.com/photos/3812433/pexels-photo-3812433.jpeg?auto=compress&cs=tinysrgb&w=900&h=1000&dpr=1",
+  "https://images.pexels.com/photos/972887/pexels-photo-972887.jpeg?auto=compress&cs=tinysrgb&w=900&h=1000&dpr=1",  
+  "https://images.pexels.com/photos/19281836/pexels-photo-19281836.jpeg?auto=compress&cs=tinysrgb&w=900&h=1000&dpr=1", // smartphones display
+  "https://images.pexels.com/photos/7690080/pexels-photo-7690080.jpeg?auto=compress&cs=tinysrgb&w=900&h=1000&dpr=1",  // laptop + headphones
+];
 
 export default function ProductCarousel() {
   const autoplay = React.useRef(
@@ -58,7 +57,6 @@ export default function ProductCarousel() {
         ))}
       </CarouselContent>
 
-      {/* optional nav */}
       <CarouselPrevious />
       <CarouselNext />
     </Carousel>

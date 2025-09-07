@@ -10,143 +10,116 @@ import { useAuth } from "@/context/auth-context"
 import { useCart } from "@/context/cart-context"
 import { useToast } from "@/hooks/use-toast"
 
+
+
 export function CartPage() {
   const { user } = useAuth()
   const { cart, updateQuantity, fetchCart, removeFromCart, loading } = useCart()
   const { toast } = useToast()
   const navigate = useNavigate()
 
-  useEffect(() => {
-    if (!user) {
-      navigate("/auth/login?next=/cart")
-    } else {
-      fetchCart()
-    }
-  }, [user]) // Only depend on user changes
 
-  const handleQuantityChange = async (productId, newQuantity) => {
-    if (newQuantity < 1) return
-    const result = await updateQuantity(productId, newQuantity)
-    if (!result.success) {
-      toast({
-        title: "Error",
-        description: result.error || "Failed to update quantity",
-        variant: "destructive",
-      })
+  useEffect(() => {
+    if (!user) navigate("/auth/login?next=/cart")
+    else fetchCart()
+  }, [user])
+
+  const items = useMemo(() => {
+    const list = cart?.items || []
+    return list.map((i) => {
+      const pid = typeof i.product === "object" ? i.product?._id : i.product
+      return {
+        productId: String(pid || ""),
+        variantSku: i.variantSku || null,
+        name: i.title,
+        image: i.thumb,
+        price: Number(i.price || 0),
+        qty: Number(i.qty || 0),
+      }
+    })
+  }, [cart])
+
+  const subtotal = useMemo(() => items.reduce((acc, it) => acc + it.price * it.qty, 0), [items])
+
+  const onQty = async (it, nextQty) => {
+    const res = await updateQuantity(it.productId, nextQty, it.variantSku)
+    if (!res.success) {
+      toast({ title: "Error", description: res.error || "Failed to update quantity", variant: "destructive" })
     }
   }
 
-  const handleRemoveItem = async (productId) => {
-    const result = await removeFromCart(productId)
+  const onRemove = async (it) => {
+    const res = await removeFromCart(it.productId, it.variantSku)
     toast({
-      title: result.success ? "Item Removed" : "Error",
-      description: result.success
-        ? "Item has been removed from your cart"
-        : result.error || "Failed to remove item",
-      variant: result.success ? undefined : "destructive",
+      title: res.success ? "Item Removed" : "Error",
+      description: res.success ? "Item has been removed from your cart" : res.error || "Failed to remove item",
+      variant: res.success ? undefined : "destructive",
     })
   }
 
   const handleCheckout = () => navigate("/checkout")
 
-  // Adapt mock cart JSON to UI shape
-  const items = useMemo(() => {
-    if (!cart?.items) return []
-    return cart.items.map((i) => ({
-      productId: i.product._id,
-      name: i.title,
-      image: i.thumb,
-      price: i.price,
-      qty: i.qty,
-    }))
-  }, [cart])
-
-  const subtotal = useMemo(
-    () => items?.reduce((acc, i) => acc + i.price * i.qty, 0),
-    [items]
-  )
-
   if (!user) return null
-  if (loading)
+
+  if (loading) {
     return (
       <div className="flex items-center justify-center py-12">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
       </div>
     )
+  }
 
-  if (items.length === 0)
+  if (items.length === 0) {
     return (
       <div className="text-center py-12">
         <ShoppingBag className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
-        <h2 className="font-heading text-2xl font-bold text-foreground mb-2">
-          Your cart is empty
-        </h2>
-        <p className="text-muted-foreground mb-6">
-          Looks like you haven't added any items to your cart yet.
-        </p>
-        <Link to="/products">
+        <h2 className="font-heading text-2xl font-bold text-foreground mb-2">Your cart is empty</h2>
+        <p className="text-muted-foreground mb-6">Looks like you haven't added any items to your cart yet.</p>
+        <Link to="/">
           <Button>Continue Shopping</Button>
         </Link>
       </div>
     )
+  }
+  if (loading) {
+    return (
+      <div className="flex flex-col items-center justify-center py-12" role="status" aria-label="Loading products">
+        <Loader2 className="h-8 w-8 animate-spin text-primary mb-4" />
+        <p className="text-muted-foreground">Loading products...</p>
+      </div>
+    )
+  }
 
-  return (
+  return loading == false ? (
     <div className="max-w-4xl mx-auto">
-      <h1 className="font-heading text-3xl font-bold text-foreground mb-8">
-        Shopping Cart
-      </h1>
+      <h1 className="font-heading text-3xl font-bold text-foreground mb-8">Shopping Cart</h1>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        {/* Cart Items */}
         <div className="lg:col-span-2 space-y-4">
           {items.map((item) => (
-            <Card key={item.productId}>
+            <Card key={`${item.productId}:${item.variantSku || ""}`}>
               <CardContent className="p-6">
                 <div className="flex gap-4">
                   <div className="relative w-20 h-20 flex-shrink-0">
                     <img
-                      src={
-                        item.image ||
-                        `/placeholder.svg?height=80&width=80&query=${encodeURIComponent(
-                          item.name
-                        )}`
-                      }
+                      src={item.image || `/placeholder.svg?height=80&width=80&query=${encodeURIComponent(item.name)}`}
                       alt={item.name}
                       className="object-cover rounded-md w-full h-full"
                     />
                   </div>
 
                   <div className="flex-1 min-w-0">
-                    <h3 className="font-medium text-foreground mb-1 truncate">
-                      {item.name}
-                    </h3>
-                    <p className="text-lg font-bold text-primary">
-                      ₹{item.price.toLocaleString()}
-                    </p>
+                    <h3 className="font-medium text-foreground mb-1 truncate">{item.name}</h3>
+                    <p className="text-lg font-bold text-primary">₹{item.price.toLocaleString()}</p>
                   </div>
 
                   <div className="flex flex-col items-end gap-3">
                     <div className="flex items-center gap-2">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() =>
-                          handleQuantityChange(item.productId, item.qty - 1)
-                        }
-                        disabled={item.qty <= 1}
-                      >
+                      <Button variant="outline" size="sm" onClick={() => onQty(item, item.qty - 1)} disabled={item.qty <= 1}>
                         <Minus className="h-3 w-3" />
                       </Button>
-                      <span className="w-8 text-center font-medium">
-                        {item.qty}
-                      </span>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() =>
-                          handleQuantityChange(item.productId, item.qty + 1)
-                        }
-                      >
+                      <span className="w-8 text-center font-medium">{item.qty}</span>
+                      <Button variant="outline" size="sm" onClick={() => onQty(item, item.qty + 1)}>
                         <Plus className="h-3 w-3" />
                       </Button>
                     </div>
@@ -154,7 +127,7 @@ export function CartPage() {
                     <Button
                       variant="ghost"
                       size="sm"
-                      onClick={() => handleRemoveItem(item.productId)}
+                      onClick={() => onRemove(item)}
                       className="text-destructive hover:text-destructive"
                     >
                       <Trash2 className="h-4 w-4 mr-1" />
@@ -167,7 +140,6 @@ export function CartPage() {
           ))}
         </div>
 
-        {/* Order Summary */}
         <div className="lg:col-span-1">
           <Card className="sticky top-4">
             <CardHeader>
@@ -175,14 +147,12 @@ export function CartPage() {
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="space-y-2">
-                {items.map((item) => (
-                  <div key={item.productId} className="flex justify-between text-sm">
+                {items.map((it) => (
+                  <div key={`${it.productId}:${it.variantSku || ""}`} className="flex justify-between text-sm">
                     <span className="truncate mr-2">
-                      {item.name} × {item.qty}
+                      {it.name} × {it.qty}
                     </span>
-                    <span className="font-medium">
-                      ₹{(item.price * item.qty).toLocaleString()}
-                    </span>
+                    <span className="font-medium">₹{(it.price * it.qty).toLocaleString()}</span>
                   </div>
                 ))}
               </div>
@@ -208,16 +178,14 @@ export function CartPage() {
 
               <div className="flex justify-between font-bold text-lg">
                 <span>Total</span>
-                <span className="text-primary">
-                  ₹{(subtotal * 1.08).toFixed(0)}
-                </span>
+                <span className="text-primary">₹{(subtotal * 1.08).toFixed(0)}</span>
               </div>
 
-              <Button onClick={handleCheckout} className="w-full" size="lg">
+              <Button onClick={() => navigate("/checkout")} className="w-full" size="lg">
                 Proceed to Checkout
               </Button>
 
-              <Link to="/products">
+              <Link to="/">
                 <Button variant="outline" className="w-full bg-transparent">
                   Continue Shopping
                 </Button>
@@ -227,5 +195,9 @@ export function CartPage() {
         </div>
       </div>
     </div>
-  )
+  ) :
+    <div className="flex flex-col items-center justify-center py-12" role="status" aria-label="Loading products">
+      <Loader2 className="h-8 w-8 animate-spin text-primary mb-4" />
+      <p className="text-muted-foreground">Loading products...</p>
+    </div>
 }

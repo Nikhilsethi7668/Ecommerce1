@@ -15,7 +15,7 @@ import axiosInstance from './lib/axios-instance'
 import { useAuth } from './context/auth-context'
 
 function App() {
- 
+
   return (
     <div className="app">
       <Routes>
@@ -70,7 +70,6 @@ function App() {
           }
         />
 
-        {/* <Route path="*" element={<Navigate to="/" replace />} /> */}
       </Routes>
     </div>
   )

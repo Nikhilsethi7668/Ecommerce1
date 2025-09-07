@@ -20,7 +20,7 @@ export function ProductCardFlip({ product }) {
   const [isLoading, setIsLoading] = useState(false)
   const { user } = useAuth()
   const { addToCart } = useCart()
-  const  navigate = useNavigate()
+  const navigate = useNavigate()
   const { toast } = useToast()
 
   const handleAddToCart = async (e) => {
@@ -87,7 +87,7 @@ export function ProductCardFlip({ product }) {
                     }
                     alt={product.name}
                     className="object-cover group-hover:scale-105 transition-transform h-full w-full duration-300"
-                    
+
                   />
                   {product.stock === 0 && (
                     <Badge className="absolute top-2 left-2 bg-destructive text-destructive-foreground">
@@ -109,7 +109,7 @@ export function ProductCardFlip({ product }) {
                     <span className="text-sm text-muted-foreground">({product.rating})</span>
                   </div>
                   <div className="mt-auto">
-                    <p className="font-heading text-xl font-bold text-primary">${product.price.toFixed(2)}</p>
+                    <p className="font-heading text-xl font-bold text-primary">Rs  {product.price.toFixed(2)}</p>
                   </div>
                 </div>
               </div>

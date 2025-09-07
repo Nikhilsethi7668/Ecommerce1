@@ -56,13 +56,15 @@ export function ProductDetail({ id }) {
       return
     }
     console.log("Called");
-    
+
     const result = await addToCart(product._id, quantity, product.variants[selectedVariant].sku)
     if (result.success) {
-      toast({
-        title: "Added to Cart",
-        description: `${product.title} (${product.variants[selectedVariant].color}) has been added to your cart`,
-      })
+      alert("Item Added To cart"),
+        toast({
+          title: "Added to Cart",
+
+          description: `${product.title} (${product.variants[selectedVariant].color}) has been added to your cart`,
+        })
     } else {
       toast({
         title: "Error",
@@ -100,9 +102,9 @@ export function ProductDetail({ id }) {
 
   return (
     <>
-  <div className="grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-8 mb-8">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-8 mb-8">
         {/* Product Images */}
-  <div className="space-y-4">
+        <div className="space-y-4">
           <div className="aspect-square relative overflow-hidden rounded-lg border border-border w-full max-w-md mx-auto md:max-w-none">
             <img
               src={product.images[selectedImage]?.url || `/placeholder.svg?height=600&width=600&query=${encodeURIComponent(product.title)}`}
@@ -135,7 +137,7 @@ export function ProductDetail({ id }) {
         </div>
 
         {/* Product Info */}
-  <div className="space-y-6 px-2 md:px-0">
+        <div className="space-y-6 px-2 md:px-0">
           <div>
             <h1 className="font-heading text-3xl font-bold text-foreground mb-2">{product.title}</h1>
             <div className="flex flex-wrap items-center gap-2 md:gap-4 mb-4">

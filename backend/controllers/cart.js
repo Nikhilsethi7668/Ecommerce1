@@ -7,14 +7,39 @@ export const addItemToCart = async (req, res) => {
   try {
     const userId = req.user?.id;
     const { productId, qty = 1, variantSku, meta } = req.body;
-    if (!userId || !productId || Number(qty) <= 0)
+
+    const requestedQty = Number(qty) || 0;
+    if (!userId || !productId || requestedQty <= 0) {
       return res.status(400).json({ message: "Invalid input" });
-    if (!mongoose.isValidObjectId(productId))
+    }
+    if (!mongoose.isValidObjectId(productId)) {
       return res.status(400).json({ message: "Invalid product id" });
+    }
 
     const prod = await Product.findById(productId).lean();
-    if (!prod || !prod.isActive)
+    if (!prod || !prod.isActive) {
       return res.status(404).json({ message: "Product not found" });
+    }
+
+    // Determine available stock, price, and thumb based on variant or product
+    let available = prod.stock || 0;
+    let unitPrice = prod.price;
+    let thumb = prod.thumb || prod.images?.[0]?.url || "";
+
+    if (variantSku) {
+      const v = (prod.variants || []).find(
+        (x) => String(x.sku) === String(variantSku)
+      );
+      if (!v) {
+        return res.status(404).json({
+          message: "Variant not found",
+          data: { product: String(productId), variantSku },
+        });
+      }
+      available = v.stock || 0;
+      unitPrice = v.price ?? unitPrice;
+      thumb = v.thumb || thumb;
+    }
 
     let userCart = await Cart.findOne({ user: userId });
     if (!userCart) userCart = new Cart({ user: userId, items: [] });
@@ -25,28 +50,41 @@ export const addItemToCart = async (req, res) => {
         String(it.variantSku || "") === String(variantSku || "")
     );
 
+    const inCart = idx > -1 ? Number(userCart.items[idx].qty || 0) : 0;
+
+    // Unified stock guard for both new and existing lines
+    if (inCart + requestedQty > available) {
+      return res.status(409).json({
+        message: "Insufficient stock",
+        data: { available, inCart },
+      });
+    }
+
     if (idx > -1) {
-      userCart.items[idx].qty += Number(qty);
+      userCart.items[idx].qty = inCart + requestedQty;
+      // keep existing title/price/thumb unless you want to sync unitPrice/thumb updates here
     } else {
       userCart.items.push({
         product: productId,
         variantSku: variantSku || undefined,
         title: prod.title,
-        thumb: prod.thumb || prod.images?.[0]?.url || "",
-        price: prod.price,
-        qty: Number(qty),
+        thumb,
+        price: unitPrice,
+        qty: requestedQty,
         meta: meta || undefined,
       });
     }
 
     await userCart.save();
+
     const populated = await userCart.populate({
       path: "items.product",
       select: "brand ratingAvg ratingCount stock variants",
     });
-    res.status(200).json({ cart: populated });
-  } catch {
-    res.status(500).json({ message: "Server error" });
+
+    return res.status(200).json({ cart: populated });
+  } catch (err) {
+    return res.status(500).json({ message: "Server error" });
   }
 };
 
@@ -110,12 +148,10 @@ export const placeOrder = async (req, res) => {
       if (!prod) {
         prod = await Product.findById(it.product);
         if (!prod || !prod.isActive)
-          return res
-            .status(409)
-            .json({
-              message: "Product unavailable",
-              data: { product: String(it.product) },
-            });
+          return res.status(409).json({
+            message: "Product unavailable",
+            data: { product: String(it.product) },
+          });
         prods.set(String(it.product), prod);
       }
       if (it.variantSku) {
@@ -123,31 +159,25 @@ export const placeOrder = async (req, res) => {
           (x) => String(x.sku) === String(it.variantSku)
         );
         if (!v)
-          return res
-            .status(409)
-            .json({
-              message: "Variant not found",
-              data: { product: String(it.product), variantSku: it.variantSku },
-            });
+          return res.status(409).json({
+            message: "Variant not found",
+            data: { product: String(it.product), variantSku: it.variantSku },
+          });
         if ((v.stock || 0) < it.qty)
-          return res
-            .status(409)
-            .json({
-              message: "Insufficient stock",
-              data: {
-                product: String(it.product),
-                variantSku: it.variantSku,
-                available: v.stock || 0,
-              },
-            });
+          return res.status(409).json({
+            message: "Insufficient stock",
+            data: {
+              product: String(it.product),
+              variantSku: it.variantSku,
+              available: v.stock || 0,
+            },
+          });
       } else {
         if ((prod.stock || 0) < it.qty)
-          return res
-            .status(409)
-            .json({
-              message: "Insufficient stock",
-              data: { product: String(it.product), available: prod.stock || 0 },
-            });
+          return res.status(409).json({
+            message: "Insufficient stock",
+            data: { product: String(it.product), available: prod.stock || 0 },
+          });
       }
     }
 

@@ -48,6 +48,7 @@ export function SignupForm() {
 
     // Validation
     if (!validateEmail(formData.email)) {
+      alert("Please enter a valid email address")
       toast({
         title: "Invalid Email",
         description: "Please enter a valid email address",
@@ -57,6 +58,7 @@ export function SignupForm() {
     }
 
     if (!validatePhone(formData.phone)) {
+      alert("Please enter a valid 10-digit phone number")
       toast({
         title: "Invalid Phone",
         description: "Please enter a valid 10-digit phone number",
@@ -66,6 +68,7 @@ export function SignupForm() {
     }
 
     if (!validatePassword(formData.password)) {
+      alert("Password must be at least 8 characters with uppercase, lowercase, and digit")
       toast({
         title: "Invalid Password",
         description: "Password must be at least 8 characters with uppercase, lowercase, and digit",
@@ -82,11 +85,9 @@ export function SignupForm() {
       if (result.success && result.userId) {
         setUserId(result.userId)
         setShowVerification(true)
-        toast({
-          title: "Verification Code Sent",
-          description: "Please check your email or SMS for the verification code",
-        })
+        alert("Signup successful Please Login to continue")
       } else {
+        alert("Signup failed: " + (result.error || "Failed to create account"))
         toast({
           title: "Signup Failed",
           description: result.error || "Failed to create account",
@@ -207,12 +208,7 @@ export function SignupForm() {
         </CardContent>
       </Card>
 
-      <VerificationModal
-        isOpen={showVerification}
-        onClose={() => setShowVerification(false)}
-        userId={userId}
-        onSuccess={handleVerificationSuccess}
-      />
+
     </>
   )
 }

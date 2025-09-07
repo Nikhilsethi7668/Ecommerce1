@@ -100,7 +100,7 @@ export function CheckoutPage() {
   }
 
   if (!user || !cart) {
-    return null // Will redirect
+    return null
   }
 
   const subtotal = cart.subtotal
@@ -239,7 +239,7 @@ export function CheckoutPage() {
                       <p className="text-sm font-medium truncate">{item.name}</p>
                       <p className="text-xs text-muted-foreground">Qty: {item.qty}</p>
                     </div>
-                    <p className="text-sm font-medium">${(item.price * item.qty)?.toFixed(2)}</p>
+                    <p className="text-sm font-medium">Rs {(item.price * item.qty)?.toFixed(2)}</p>
                   </div>
                 ))}
               </div>
@@ -249,7 +249,7 @@ export function CheckoutPage() {
               <div className="space-y-2">
                 <div className="flex justify-between">
                   <span>Subtotal</span>
-                  <span>${subtotal?.toFixed(2)}</span>
+                  <span>Rs {subtotal?.toFixed(2)}</span>
                 </div>
                 <div className="flex justify-between">
                   <span>Shipping</span>
@@ -257,7 +257,7 @@ export function CheckoutPage() {
                 </div>
                 <div className="flex justify-between">
                   <span>Tax</span>
-                  <span>${tax?.toFixed(2)}</span>
+                  <span>Rs {tax?.toFixed(2)}</span>
                 </div>
               </div>
 
@@ -265,7 +265,7 @@ export function CheckoutPage() {
 
               <div className="flex justify-between font-bold text-lg">
                 <span>Total</span>
-                <span className="text-primary">${total?.toFixed(2)}</span>
+                <span className="text-primary">Rs {total?.toFixed(2)}</span>
               </div>
 
               <Button type="submit" className="w-full" disabled={loading}>

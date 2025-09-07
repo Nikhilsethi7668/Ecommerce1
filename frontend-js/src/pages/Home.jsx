@@ -13,7 +13,7 @@ export default function HomePage() {
           <h1 className="font-heading text-4xl font-bold text-foreground mb-4">Welcome to Our Store</h1>
           <p className="text-muted-foreground text-lg">Discover amazing products at great prices</p>
         </div>
-        <ProductCarousel/>
+        <ProductCarousel />
         <CategorySections />
       </main>
     </div>

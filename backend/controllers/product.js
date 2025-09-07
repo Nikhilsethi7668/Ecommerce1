@@ -7,24 +7,43 @@ const num = (v, d) => {
   return Number.isFinite(n) ? n : d;
 };
 
-const buildProductFilter = (q, brand, tags, minPrice, maxPrice) => {
+const escapeRegExp = (s = "") => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
+export const buildProductFilter = (q, brand, tags, minPrice, maxPrice) => {
   const filter = { isActive: true };
+  const and = [];
+
   if (q) {
-    filter.$or = [
-      { title: { $regex: q, $options: "i" } },
-      { brand: { $regex: q, $options: "i" } },
-      { keywords: { $elemMatch: { $regex: q, $options: "i" } } },
-      { tags: { $elemMatch: { $regex: q, $options: "i" } } },
-    ];
+    and.push({
+      $or: [
+        { title: { $regex: q, $options: "i" } },
+        { brand: { $regex: q, $options: "i" } },
+        { keywords: { $elemMatch: { $regex: q, $options: "i" } } },
+        { tags: { $elemMatch: { $regex: q, $options: "i" } } },
+      ],
+    });
   }
+
   if (brand) {
-    filter.brand = {
-      $in: String(brand)
-        .split(",")
-        .map((s) => s.trim())
-        .filter(Boolean),
-    };
+    const terms = String(brand)
+      .split(",")
+      .map((s) => s.trim())
+      .filter(Boolean);
+
+    if (terms.length) {
+      and.push({
+        $or: terms.flatMap((t) => {
+          const rx = new RegExp(`\\b${escapeRegExp(t)}`, "i");
+          return [
+            { brand: { $regex: rx } },
+            { title: { $regex: rx } },
+            { keywords: { $elemMatch: { $regex: rx } } },
+          ];
+        }),
+      });
+    }
   }
+
   if (tags) {
     filter.tags = {
       $in: String(tags)
@@ -33,11 +52,14 @@ const buildProductFilter = (q, brand, tags, minPrice, maxPrice) => {
         .filter(Boolean),
     };
   }
-  if (minPrice || maxPrice) {
+
+  if (minPrice != null || maxPrice != null) {
     filter.price = {};
-    if (minPrice) filter.price.$gte = Number(minPrice);
-    if (maxPrice) filter.price.$lte = Number(maxPrice);
+    if (minPrice != null) filter.price.$gte = Number(minPrice);
+    if (maxPrice != null) filter.price.$lte = Number(maxPrice);
   }
+
+  if (and.length) filter.$and = and;
   return filter;
 };
 
@@ -147,12 +169,15 @@ export const getProductDetails = async (req, res) => {
   try {
     const { id } = req.params;
     if (!mongoose.isValidObjectId(id))
-      return res.status(400).json({ success: false, message: "Invalid product id" });
+      return res
+        .status(400)
+        .json({ success: false, message: "Invalid product id" });
 
     const product = await Product.findById(id)
       .populate("category", "_id name")
       .lean();
-    if (!product) return res.status(404).json({ success: false, message: "Not found" });
+    if (!product)
+      return res.status(404).json({ success: false, message: "Not found" });
 
     res.status(200).json({ success: true, product });
   } catch {

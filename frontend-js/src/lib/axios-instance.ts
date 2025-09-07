@@ -2,10 +2,9 @@ import axios from "axios";
 
 const axiosInstance = axios.create({
     baseURL: "http://localhost:3002",
-    withCredentials: true,  // This ensures cookies are sent with requests
+    withCredentials: true,  
 });
 
-// Add a response interceptor to handle unauthorized responses
 axiosInstance.interceptors.response.use(
     (response) => response,
     (error) => {
