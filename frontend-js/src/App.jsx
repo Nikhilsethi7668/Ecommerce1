@@ -1,4 +1,4 @@
-import { Routes, Route, Link, Navigate } from 'react-router-dom'
+import { Routes, Route, Link, Navigate, useLocation } from 'react-router-dom'
 import ProtectedRoute from '@/routes/ProtectedRoute'
 import HomePage from '@/pages/Home'
 import CartPage from '@/pages/Cart'
@@ -10,8 +10,12 @@ import OrderDetailPage from '@/pages/OrderDetail'
 import ProfilePage from '@/pages/Profile'
 import LoginPage from './pages/auth/login/LoginPage'
 import SignupPage from './pages/auth/signup/SignupPage'
+import { useEffect } from 'react'
+import axiosInstance from './lib/axios-instance'
+import { useAuth } from './context/auth-context'
 
 function App() {
+ 
   return (
     <div className="app">
       <Routes>

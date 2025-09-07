@@ -62,6 +62,18 @@ export async function signup(req, res) {
   }
 }
 
+export async function getProfile(req, res) {
+  try {
+    const userId = req.user?.id;
+    if (!userId) return res.status(401).json({ success: false, message: "Unauthorized" });
+    const user = await User.findById(userId).lean();
+    if (!user) return res.status(404).json({ success: false, message: "User not found" });
+    return res.json({ success: true, user });
+  } catch {
+    return res.status(500).json({ success: false, message: "Server error" });
+  }
+}
+
 export async function login(req, res) {
   try {
     const { email, password } = req.body;
