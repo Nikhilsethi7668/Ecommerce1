@@ -161,7 +161,8 @@ export const getAllCategories = async (req, res) => {
   try {
     const cats = await Category.find({ isActive: true })
       .sort({ name: 1 })
-      .lean();
+      .lean()
+      .populate("subcategories", "_id name");
     res.status(200).json(cats);
   } catch {
     res.status(500).json({ message: "Server error" });

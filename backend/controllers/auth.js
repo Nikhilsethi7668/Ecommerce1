@@ -72,20 +72,20 @@ export async function login(req, res) {
     const emailNorm = String(email).toLowerCase().trim();
     const user = await User.findOne({ email: emailNorm });
     if (!user)
-      return res.status(401).json({ message: "Invalid email or password" });
+      return res.status(401).json({ success: false, message: "Invalid email or password" });
 
     const ok = await bcrypt.compare(password, user.passwordHash || "");
     if (!ok)
-      return res.status(401).json({ message: "Invalid email or password" });
+      return res.status(401).json({ success: false, message: "Invalid email or password" });
 
     await User.updateOne(
       { _id: user._id },
       { $set: { lastLoginAt: new Date() } }
     );
     issueAuthCookie(res, user._id);
-    return res.json({ message: "Logged in", user: sanitize(user) });
+    return res.json({ success: true, message: "Logged in", user: sanitize(user) });
   } catch {
-    return res.status(500).json({ message: "Server error" });
+    return res.status(500).json({ success: false, message: "Server error" });
   }
 }
 
