@@ -1,8 +1,7 @@
-// middlewares/auth.js
 import jwt from "jsonwebtoken";
 
 export const COOKIE_NAME = "token";
-const JWT_SECRET = process.env.JWT_SECRET || "dev-secret";
+const JWT_SECRET = process.env.JWT_SECRET || "EcommerceSecretKey";
 
 export function issueAuthCookie(res, userId) {
   const token = jwt.sign({ sub: String(userId) }, JWT_SECRET, {
@@ -10,7 +9,7 @@ export function issueAuthCookie(res, userId) {
   });
   res.cookie(COOKIE_NAME, token, {
     httpOnly: true,
-    sameSite: "lax",
+    sameSite: "none",
     secure: true,
     maxAge: 7 * 24 * 60 * 60 * 1000,
   });
@@ -31,8 +30,8 @@ export function requireAuth(req, res, next) {
 export function logout(req, res) {
   res.clearCookie(COOKIE_NAME, {
     httpOnly: true,
-    sameSite: "lax",
-    secure: process.env.NODE_ENV === "production",
+    sameSite: "none",
+    secure: true,
   });
   res.json({ message: "Logged out" });
 }
