@@ -13,10 +13,9 @@ export function AuthProvider({ children }) {
   const inFlight = useRef(false);
 
   const validateSession = useCallback(async () => {
-    if (inFlight.current) return;          // <— avoid overlaps
+    if (inFlight.current) return;
     inFlight.current = true;
     try {
-      // don’t throw on 401; handle it as unauth
       const res = await axiosInstance.get("/api/auth/me", {
         validateStatus: () => true,
       });
@@ -35,7 +34,7 @@ export function AuthProvider({ children }) {
   }, []);
 
   useEffect(() => {
-    if (ranOnce.current) return;         
+    if (ranOnce.current) return;
     ranOnce.current = true;
     validateSession();
   }, [validateSession]);
