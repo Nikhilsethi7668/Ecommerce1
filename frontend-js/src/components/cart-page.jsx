@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useMemo, useState } from "react"
+import { useEffect, useMemo, useRef, useState } from "react"
 import { useNavigate, Link } from "react-router-dom"
 import { Minus, Plus, Trash2, ShoppingBag, Loader2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
@@ -16,16 +16,7 @@ export function CartPage() {
   const { toast } = useToast()
   const navigate = useNavigate()
 
-  // track per-line “busy” state so we can disable controls without blanking the page
-  const [busyKeys, setBusyKeys] = useState(() => new Set())
-
-  // if user logs out → redirect, else fetch once
-  useEffect(() => {
-    if (!user) navigate("/auth/login?next=/cart")
-    else fetchCart()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user])
-
+  // ---- build stable items from context cart
   const items = useMemo(() => {
     const list = cart?.items || []
     return list.map((i) => {
@@ -42,42 +33,92 @@ export function CartPage() {
     })
   }, [cart])
 
-  const hasItems = items.length > 0
-  const subtotal = useMemo(() => items.reduce((acc, it) => acc + it.price * it.qty, 0), [items])
+  const [uiItems, setUiItems] = useState(items)
+  const busyKeys = useRef(new Set()) 
+  const [mutationsInFlight, setMutationsInFlight] = useState(0)
 
-  const setBusy = (key, val) =>
-    setBusyKeys((prev) => {
-      const next = new Set(prev)
-      if (val) next.add(key)
-      else next.delete(key)
-      return next
-    })
+  useEffect(() => {
+    if (mutationsInFlight === 0) setUiItems(items)
+  }, [items, mutationsInFlight])
+
+  useEffect(() => {
+    if (!user) navigate("/auth/login?next=/cart")
+    else fetchCart()
+
+  }, [user])
+
+  const subtotal = useMemo(
+    () => uiItems.reduce((acc, it) => acc + it.price * it.qty, 0),
+    [uiItems]
+  )
+
+  const setBusy = (key, val) => {
+    const set = new Set(busyKeys.current)
+    if (val) set.add(key)
+    else set.delete(key)
+    busyKeys.current = set
+   
+    setMutationsInFlight((n) => (val ? n + 1 : Math.max(0, n - 1)))
+  }
+
+  const optimisticUpdateQty = (key, nextQty) => {
+    setUiItems((prev) =>
+      prev
+        .map((it) => (it.key === key ? { ...it, qty: nextQty } : it))
+        .filter((it) => it.qty > 0) 
+    )
+  }
+
+  const optimisticRemove = (key) => {
+    setUiItems((prev) => prev.filter((it) => it.key !== key))
+  }
 
   const onQty = async (it, nextQty) => {
-    if (nextQty < 1) return
+    if (nextQty < 1) {
+      return onRemove(it)
+    }
+    const prev = uiItems
     setBusy(it.key, true)
+    optimisticUpdateQty(it.key, nextQty)
+
     const res = await updateQuantity(it.productId, nextQty, it.variantSku)
     if (!res.success) {
-      toast({ title: "Error", description: res.error || "Failed to update quantity", variant: "destructive" })
+      // rollback UI
+      setUiItems(prev)
+      toast({
+        title: "Error",
+        description: res.error || "Failed to update quantity",
+        variant: "destructive",
+      })
     }
     setBusy(it.key, false)
   }
 
   const onRemove = async (it) => {
+    const prev = uiItems
     setBusy(it.key, true)
+    optimisticRemove(it.key)
+
     const res = await removeFromCart(it.productId, it.variantSku)
-    toast({
-      title: res.success ? "Item Removed" : "Error",
-      description: res.success ? "Item has been removed from your cart" : res.error || "Failed to remove item",
-      variant: res.success ? undefined : "destructive",
-    })
+    if (!res.success) {
+      setUiItems(prev)
+      toast({
+        title: "Error",
+        description: res.error || "Failed to remove item",
+        variant: "destructive",
+      })
+    } else {
+      toast({
+        title: "Item Removed",
+        description: "Item has been removed from your cart",
+      })
+    }
     setBusy(it.key, false)
   }
 
   if (!user) return null
 
-  // Show big loader only when we DON'T have anything to show yet.
-  if (!hasItems && loading) {
+  if (loading && uiItems.length === 0) {
     return (
       <div className="flex items-center justify-center py-12">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
@@ -85,7 +126,7 @@ export function CartPage() {
     )
   }
 
-  if (!loading && !hasItems) {
+  if (!loading && uiItems.length === 0) {
     return (
       <div className="text-center py-12">
         <ShoppingBag className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
@@ -101,10 +142,9 @@ export function CartPage() {
       <h1 className="font-heading text-3xl font-bold text-foreground mb-8">Shopping Cart</h1>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        {/* Items */}
         <div className="lg:col-span-2 space-y-4">
-          {items.map((item) => {
-            const isBusy = busyKeys.has(item.key)
+          {uiItems.map((item) => {
+            const isBusy = busyKeys.current.has(item.key)
             return (
               <Card key={item.key} className={isBusy ? "opacity-90" : ""}>
                 <CardContent className="p-6">
@@ -161,13 +201,14 @@ export function CartPage() {
           })}
         </div>
 
-        {/* Summary */}
         <div className="lg:col-span-1">
           <Card className="sticky top-4">
-            <CardHeader><CardTitle className="font-heading">Order Summary</CardTitle></CardHeader>
+            <CardHeader>
+              <CardTitle className="font-heading">Order Summary</CardTitle>
+            </CardHeader>
             <CardContent className="space-y-4">
               <div className="space-y-2">
-                {items.map((it) => (
+                {uiItems.map((it) => (
                   <div key={it.key} className="flex justify-between text-sm">
                     <span className="truncate mr-2">{it.name} × {it.qty}</span>
                     <span className="font-medium">₹{(it.price * it.qty).toLocaleString()}</span>
