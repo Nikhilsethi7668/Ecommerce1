@@ -11,7 +11,7 @@ export function issueAuthCookie(res, userId) {
   res.cookie(COOKIE_NAME, token, {
     httpOnly: true,
     sameSite: "lax",
-    secure: process.env.NODE_ENV === "production",
+    secure: true,
     maxAge: 7 * 24 * 60 * 60 * 1000,
   });
 }
