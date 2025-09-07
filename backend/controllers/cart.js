@@ -1,6 +1,6 @@
 import mongoose from "mongoose";
 import Cart from "../models/cart.js";
-import Order from "../models/Order.js";
+import Order from "../models/orders.js";
 import Product from "../models/product.js";
 
 export const addItemToCart = async (req, res) => {

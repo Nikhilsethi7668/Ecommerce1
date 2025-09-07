@@ -136,7 +136,7 @@ export const getProductsByCategory = async (req, res) => {
       meta: { total, page: p, pages: Math.ceil(total / l), limit: l },
     });
   } catch {
-    res.status(500).json({ message: "Server error" });
+    res.status(500).json({ success: false, message: "Server error" });
   }
 };
 
@@ -144,16 +144,16 @@ export const getProductDetails = async (req, res) => {
   try {
     const { id } = req.params;
     if (!mongoose.isValidObjectId(id))
-      return res.status(400).json({ message: "Invalid product id" });
+      return res.status(400).json({ success: false, message: "Invalid product id" });
 
     const product = await Product.findById(id)
       .populate("category", "_id name")
       .lean();
-    if (!product) return res.status(404).json({ message: "Not found" });
+    if (!product) return res.status(404).json({ success: false, message: "Not found" });
 
-    res.status(200).json(product);
+    res.status(200).json({ success: true, product });
   } catch {
-    res.status(500).json({ message: "Server error" });
+    res.status(500).json({ success: false, message: "Server error" });
   }
 };
 

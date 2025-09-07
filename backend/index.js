@@ -26,6 +26,8 @@ app.use(cookieParser());
 app.use("/api/auth", authRoute);
 app.use("/api/products", productRoutes);
 app.use("/api/orders", orderRoutes);
+import cartRoutes from "./routers/cart.js";
+app.use("/api/cart", cartRoutes);
 
 connectDB();
 

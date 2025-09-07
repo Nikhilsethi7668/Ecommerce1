@@ -5,7 +5,7 @@ import {
   addItemToCart,
   getCart,
   removeItemFromCart,
-  clearCart,
+  // clearCart,
   placeOrder,
 } from "../controllers/cart.js";
 
@@ -14,7 +14,7 @@ const router = express.Router();
 router.get("/", requireAuth, getCart);
 router.post("/add", requireAuth, addItemToCart);
 router.post("/remove", requireAuth, removeItemFromCart);
-router.post("/clear", requireAuth, clearCart);
+// router.post("/clear", requireAuth, clearCart);
 router.post("/place-order", requireAuth, placeOrder);
 
 export default router;
