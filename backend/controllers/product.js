@@ -101,6 +101,7 @@ export const searchProducts = async (req, res) => {
 export const getProductsByCategory = async (req, res) => {
   try {
     const { categoryId } = req.params;
+    console.log(categoryId);
     if (!mongoose.isValidObjectId(categoryId)) {
       return res.status(400).json({ message: "Invalid category id" });
     }
@@ -123,8 +124,10 @@ export const getProductsByCategory = async (req, res) => {
       ...buildProductFilter(q, brand, tags, minPrice, maxPrice),
       category: categoryId,
     };
+    console.log(filter);
 
     const total = await Product.countDocuments(filter);
+    console.log(total);
     const data = await Product.find(filter)
       .sort(sort)
       .skip((p - 1) * l)
