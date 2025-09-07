@@ -1,5 +1,5 @@
 import bcrypt from "bcryptjs";
-import User from "../models/User.js";
+import User from "../models/user.js";
 import { issueAuthCookie } from "../middlewares/auth.js";
 
 const isStrongPassword = (pw) =>
@@ -24,12 +24,10 @@ export async function signup(req, res) {
     if (!/^\d{10}$/.test(String(phone)))
       return res.status(400).json({ message: "Invalid phone number" });
     if (!isStrongPassword(password))
-      return res
-        .status(400)
-        .json({
-          message:
-            "Password must be ≥6 chars and include uppercase, lowercase, number, and special character (!@#$%^&*).",
-        });
+      return res.status(400).json({
+        message:
+          "Password must be ≥6 chars and include uppercase, lowercase, number, and special character (!@#$%^&*).",
+      });
 
     const dup = await User.findOne({
       $or: [{ email: emailNorm }, { phone }],
@@ -65,9 +63,13 @@ export async function signup(req, res) {
 export async function getProfile(req, res) {
   try {
     const userId = req.user?.id;
-    if (!userId) return res.status(401).json({ success: false, message: "Unauthorized" });
+    if (!userId)
+      return res.status(401).json({ success: false, message: "Unauthorized" });
     const user = await User.findById(userId).lean();
-    if (!user) return res.status(404).json({ success: false, message: "User not found" });
+    if (!user)
+      return res
+        .status(404)
+        .json({ success: false, message: "User not found" });
     return res.json({ success: true, user });
   } catch {
     return res.status(500).json({ success: false, message: "Server error" });
@@ -84,18 +86,26 @@ export async function login(req, res) {
     const emailNorm = String(email).toLowerCase().trim();
     const user = await User.findOne({ email: emailNorm });
     if (!user)
-      return res.status(401).json({ success: false, message: "Invalid email or password" });
+      return res
+        .status(401)
+        .json({ success: false, message: "Invalid email or password" });
 
     const ok = await bcrypt.compare(password, user.passwordHash || "");
     if (!ok)
-      return res.status(401).json({ success: false, message: "Invalid email or password" });
+      return res
+        .status(401)
+        .json({ success: false, message: "Invalid email or password" });
 
     await User.updateOne(
       { _id: user._id },
       { $set: { lastLoginAt: new Date() } }
     );
     issueAuthCookie(res, user._id);
-    return res.json({ success: true, message: "Logged in", user: sanitize(user) });
+    return res.json({
+      success: true,
+      message: "Logged in",
+      user: sanitize(user),
+    });
   } catch {
     return res.status(500).json({ success: false, message: "Server error" });
   }

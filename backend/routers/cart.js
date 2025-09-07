@@ -5,7 +5,6 @@ import {
   addItemToCart,
   getCart,
   removeItemFromCart,
-  // clearCart,
   placeOrder,
 } from "../controllers/cart.js";
 
