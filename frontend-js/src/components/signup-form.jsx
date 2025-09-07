@@ -46,7 +46,6 @@ export function SignupForm() {
   const handleSubmit = async (e) => {
     e.preventDefault()
 
-    // Validation
     if (!validateEmail(formData.email)) {
       alert("Please enter a valid email address")
       toast({

@@ -15,7 +15,6 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { Card } from "@/components/ui/card"
 
-// simple slugify helper
 const toSlug = (s) =>
   s
     .toLowerCase()
@@ -73,20 +72,17 @@ export function CategoryBar() {
     fetchCategories()
   }, [])
 
-  // Non-toggling setter for cases where we want to force-select a category (e.g., when opening a dropdown)
   const setCategoryOnOpen = (categoryId) => {
     setSelectedCategoryId(categoryId)
     setSelectedSubcategoryId("")
     const params = new URLSearchParams(searchParams.toString())
     params.set("categoryId", categoryId)
-    // opening the dropdown resets any previously selected subcategory
     params.delete("subcategoryId")
     params.delete("page")
     navigate(`/products?${params.toString()}`)
   }
 
   const handleCategoryClick = (categoryId) => {
-    // update local state for immediate feedback
     if (categoryId === selectedCategoryId) {
       setSelectedCategoryId("")
       setSelectedSubcategoryId("")

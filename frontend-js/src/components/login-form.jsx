@@ -35,7 +35,6 @@ export function LoginForm() {
           description: "You have been successfully logged in.",
         })
 
-        // Redirect to next page or home
         const next = searchParams.get("next") || "/"
         navigate(next)
       } else {
